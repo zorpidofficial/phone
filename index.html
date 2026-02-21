@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Collector</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .loader {
+            border-top-color: #3B82F6;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-6">
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8 transition-all duration-300">
+        <header class="mb-8">
+            <h1 class="text-2xl font-light text-gray-800">Phone Registry</h1>
+            <p class="text-sm text-gray-400 mt-1">Add a new number to the master sheet.</p>
+        </header>
+
+        <form id="phoneForm" class="space-y-6">
+            <div>
+                <label for="phone" class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Phone Number</label>
+                <input 
+                    type="tel" 
+                    id="phone" 
+                    name="phone" 
+                    placeholder="+1 (555) 000-0000" 
+                    required
+                    class="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-gray-700"
+                >
+            </div>
+
+            <button 
+                type="submit" 
+                id="submitBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl shadow-lg shadow-blue-500/20 active:transform active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+                <span>Save to Sheets</span>
+                <div id="loader" class="hidden w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            </button>
+        </form>
+
+        <div id="statusMsg" class="mt-6 text-center text-sm hidden p-3 rounded-lg"></div>
+    </div>
+
+    <script>
+        /**
+         * CONFIGURATION
+         * Replace the empty string below with your deployed Google Apps Script Web App URL.
+         */
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvnrO2HRyJM0jWHIsHp8TYGWud3bsrvB6PK8m3HghAfOkEku8CgncgxiEx3vXQ4EVhdQ/exec";
+
+        const form = document.getElementById('phoneForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+        const statusMsg = document.getElementById('statusMsg');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!SCRIPT_URL) {
+                showStatus("Please add your Script URL in the code.", "error");
+                return;
+            }
+
+            const phone = document.getElementById('phone').value;
+            setLoading(true);
+
+            try {
+                // Using 'no-cors' mode often works best for simple GAS requests, 
+                // but since we want JSON responses, we rely on the GAS headers.
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // GAS often requires no-cors for simple redirects
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                // Since 'no-cors' doesn't return the body, we assume success if no error is thrown
+                // For a more robust solution, use standard fetch with proper GAS response handling
+                showStatus("Data sent to script successfully!", "success");
+                form.reset();
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus("Failed to save number. Check console for details.", "error");
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            loader.classList.toggle('hidden', !isLoading);
+            submitBtn.querySelector('span').textContent = isLoading ? 'Processing...' : 'Save to Sheets';
+            if (isLoading) statusMsg.classList.add('hidden');
+        }
+
+        function showStatus(msg, type) {
+            statusMsg.textContent = msg;
+            statusMsg.classList.remove('hidden', 'bg-green-50', 'text-green-700', 'bg-red-50', 'text-red-700');
+            
+            if (type === 'success') {
+                statusMsg.classList.add('bg-green-50', 'text-green-700');
+            } else {
+                statusMsg.classList.add('bg-red-50', 'text-red-700');
+            }
+        }
+    </script>
+</body>
+</html>
